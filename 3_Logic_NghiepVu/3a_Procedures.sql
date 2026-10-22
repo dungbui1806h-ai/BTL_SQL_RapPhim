@@ -1,6 +1,7 @@
 USE QuanLyRapPhim;
 SET NAMES utf8mb4;
 DELIMITER //
+-- 1. THỦ TỤC THÊM KHÁCH HÀNG (sp_ThemKhachHang)
 DROP PROCEDURE IF EXISTS sp_ThemKhachHang //
 CREATE PROCEDURE sp_ThemKhachHang(
     IN p_MaKH VARCHAR(20),
@@ -24,13 +25,16 @@ BEGIN
     SELECT * FROM KHACH_HANG WHERE MaKH = p_MaKH;
 END //
 -- 2. THỦ TỤC ĐẶT VÉ XEM PHIM TÍNH TIỀN TỰ ĐỘNG (sp_DatVeXemPhim)
+--    Chống trùng ghế + độ tuổi: trigger trg_KiemTraDatVe_BeforeInsert. Tích điểm: trigger tích điểm vé.
+--    p_MaNV: nhân viên xuất vé tại quầy (NULL = đặt online).
 DROP PROCEDURE IF EXISTS sp_DatVeXemPhim //
 CREATE PROCEDURE sp_DatVeXemPhim(
     IN p_MaVe VARCHAR(20),
     IN p_MaKH VARCHAR(20),
     IN p_MaSuatChieu VARCHAR(20),
     IN p_SoGhe VARCHAR(10),
-    IN p_TrangThaiThanhToan VARCHAR(30)
+    IN p_TrangThaiThanhToan VARCHAR(30),
+    IN p_MaNV VARCHAR(20)
 )
 BEGIN
     DECLARE v_MaPhong VARCHAR(20);
@@ -47,6 +51,12 @@ BEGIN
     IF v_TrangThaiSuat <> 'Sắp chiếu' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Suất chiếu đang chiếu hoặc đã kết thúc, không thể đặt vé!';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM KHACH_HANG WHERE MaKH = p_MaKH) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã khách hàng không tồn tại!';
+    END IF;
+    IF p_MaNV IS NOT NULL AND NOT EXISTS (SELECT 1 FROM NHAN_VIEN WHERE MaNV = p_MaNV) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã nhân viên xuất vé không tồn tại!';
+    END IF;
     SELECT LoaiPhong INTO v_LoaiPhong FROM PHONG_CHIEU WHERE MaPhong = v_MaPhong;
     CASE v_LoaiPhong
         WHEN '2D' THEN SET v_GiaCoBan = 75000;
@@ -59,9 +69,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Số ghế không tồn tại trong phòng của suất chiếu này!';
     END IF;
     SET v_GiaVeCuoi = v_GiaCoBan + v_PhuThuGhe;
-    INSERT INTO DAT_VE (MaVe, NgayGioDat, GiaVe, TrangThaiThanhToan, MaKH, MaSuatChieu, MaPhong, SoGhe)
-    VALUES (p_MaVe, NOW(), v_GiaVeCuoi, IFNULL(p_TrangThaiThanhToan, 'Chờ thanh toán'), p_MaKH, p_MaSuatChieu, v_MaPhong, p_SoGhe);
-    SELECT dv.MaVe, kh.HoTen AS TenKhachHang, p.TenPhim, cr.TenRap, pc.TenPhong, pc.LoaiPhong, dv.SoGhe, gn.LoaiGhe, dv.NgayGioDat, dv.GiaVe, dv.TrangThaiThanhToan
+    INSERT INTO DAT_VE (MaVe, NgayGioDat, GiaVe, TrangThaiThanhToan, MaKH, MaSuatChieu, MaPhong, SoGhe, MaNV)
+    VALUES (p_MaVe, NOW(), v_GiaVeCuoi, IFNULL(p_TrangThaiThanhToan, 'Chờ thanh toán'), p_MaKH, p_MaSuatChieu, v_MaPhong, p_SoGhe, p_MaNV);
+    SELECT dv.MaVe, kh.HoTen AS TenKhachHang, p.TenPhim, cr.TenRap, pc.TenPhong, pc.LoaiPhong, dv.SoGhe, gn.LoaiGhe, dv.NgayGioDat, dv.GiaVe, dv.TrangThaiThanhToan, dv.MaNV
     FROM DAT_VE dv
     JOIN KHACH_HANG kh ON dv.MaKH = kh.MaKH
     JOIN SUAT_CHIEU sc ON dv.MaSuatChieu = sc.MaSuatChieu
@@ -162,5 +172,301 @@ BEGIN
         VALUES (p_MaNV, p_ChungChiKyThuat, p_KhuVucPhuTrach);
     END IF;
     COMMIT;
+END //
+-- 7. THỦ TỤC THÊM PHIM MỚI (sp_ThemPhim)
+--    [SỬA] p_GioiHanTuoi NULL trước đây lọt qua kiểm tra (NULL NOT IN (...) = NULL)
+DROP PROCEDURE IF EXISTS sp_ThemPhim //
+CREATE PROCEDURE sp_ThemPhim(
+    IN p_MaPhim VARCHAR(20),
+    IN p_TenPhim VARCHAR(200),
+    IN p_DaoDien VARCHAR(150),
+    IN p_ThoiLuong INT,
+    IN p_NgayKhoiChieu DATE,
+    IN p_GioiHanTuoi VARCHAR(10)
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM PHIM WHERE MaPhim = p_MaPhim) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã phim này đã tồn tại trên hệ thống!';
+    END IF;
+    IF p_ThoiLuong IS NULL OR p_ThoiLuong <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Thời lượng phim phải lớn hơn 0 phút!';
+    END IF;
+    IF p_GioiHanTuoi IS NULL OR p_GioiHanTuoi NOT IN ('G', 'PG', '13+', '18+', 'P', 'K', 'T13', 'T16', 'T18') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Giới hạn độ tuổi không hợp lệ!';
+    END IF;
+    INSERT INTO PHIM (MaPhim, TenPhim, DaoDien, ThoiLuong, NgayKhoiChieu, GioiHanTuoi)
+    VALUES (p_MaPhim, p_TenPhim, p_DaoDien, p_ThoiLuong, p_NgayKhoiChieu, p_GioiHanTuoi);
+    SELECT * FROM PHIM WHERE MaPhim = p_MaPhim;
+END //
+-- 8. CẬP NHẬT THÔNG TIN PHIM (sp_CapNhatPhim)
+--    Tham số nào truyền NULL thì giữ nguyên giá trị cũ.
+DROP PROCEDURE IF EXISTS sp_CapNhatPhim //
+CREATE PROCEDURE sp_CapNhatPhim(
+    IN p_MaPhim VARCHAR(20),
+    IN p_TenPhim VARCHAR(200),
+    IN p_DaoDien VARCHAR(150),
+    IN p_ThoiLuong INT,
+    IN p_NgayKhoiChieu DATE,
+    IN p_GioiHanTuoi VARCHAR(10),
+    IN p_TrangThai VARCHAR(30)
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM PHIM WHERE MaPhim = p_MaPhim) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã phim không tồn tại!';
+    END IF;
+    IF p_ThoiLuong IS NOT NULL AND p_ThoiLuong <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Thời lượng phim phải lớn hơn 0 phút!';
+    END IF;
+    IF p_GioiHanTuoi IS NOT NULL AND p_GioiHanTuoi NOT IN ('G', 'PG', '13+', '18+', 'P', 'K', 'T13', 'T16', 'T18') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Giới hạn độ tuổi không hợp lệ!';
+    END IF;
+    IF p_TrangThai IS NOT NULL AND p_TrangThai NOT IN ('Sắp chiếu', 'Đang chiếu', 'Ngưng chiếu') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Trạng thái phim không hợp lệ (Sắp chiếu, Đang chiếu, Ngưng chiếu)!';
+    END IF;
+    -- Đổi thời lượng sẽ làm sai giờ kết thúc + 15 phút dọn dẹp của các suất chiếu đã xếp
+    IF p_ThoiLuong IS NOT NULL
+       AND p_ThoiLuong <> (SELECT ThoiLuong FROM PHIM WHERE MaPhim = p_MaPhim)
+       AND EXISTS (SELECT 1 FROM SUAT_CHIEU WHERE MaPhim = p_MaPhim AND TrangThai = 'Sắp chiếu') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Phim còn suất chiếu sắp chiếu, không thể đổi thời lượng!';
+    END IF;
+    UPDATE PHIM
+    SET TenPhim       = IFNULL(p_TenPhim, TenPhim),
+        DaoDien       = IFNULL(p_DaoDien, DaoDien),
+        ThoiLuong     = IFNULL(p_ThoiLuong, ThoiLuong),
+        NgayKhoiChieu = IFNULL(p_NgayKhoiChieu, NgayKhoiChieu),
+        GioiHanTuoi   = IFNULL(p_GioiHanTuoi, GioiHanTuoi),
+        TrangThai     = IFNULL(p_TrangThai, TrangThai)
+    WHERE MaPhim = p_MaPhim;
+    SELECT * FROM PHIM WHERE MaPhim = p_MaPhim;
+END //
+-- 9. GỠ BỎ PHIM (sp_GoBoPhim) - Ràng buộc toàn vẹn tham chiếu (mục 4.4)
+--    Phim đã có suất chiếu (đồng nghĩa có thể đã có vé) => chỉ chuyển 'Ngưng chiếu'.
+--    Phim chưa có suất chiếu nào => xóa hẳn (các bảng con như thể loại/diễn viên cần ON DELETE CASCADE).
+DROP PROCEDURE IF EXISTS sp_GoBoPhim //
+CREATE PROCEDURE sp_GoBoPhim(
+    IN p_MaPhim VARCHAR(20)
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM PHIM WHERE MaPhim = p_MaPhim) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã phim không tồn tại!';
+    END IF;
+    IF EXISTS (SELECT 1 FROM SUAT_CHIEU WHERE MaPhim = p_MaPhim) THEN
+        UPDATE PHIM SET TrangThai = 'Ngưng chiếu' WHERE MaPhim = p_MaPhim;
+        SELECT p_MaPhim AS MaPhim, 'Ngưng chiếu' AS KetQua,
+               'Phim đã có suất chiếu/vé nên không xóa, chỉ chuyển sang trạng thái Ngưng chiếu để bảo toàn báo cáo doanh thu.' AS GhiChu;
+    ELSE
+        DELETE FROM PHIM WHERE MaPhim = p_MaPhim;
+        SELECT p_MaPhim AS MaPhim, 'Đã xóa' AS KetQua, 'Phim chưa có suất chiếu nên đã được xóa khỏi hệ thống.' AS GhiChu;
+    END IF;
+END //
+-- 10. TẠO SUẤT CHIẾU (sp_TaoSuatChieu)
+--     Giờ kết thúc = giờ bắt đầu + thời lượng phim.
+--     Chồng lịch + 15 phút dọn dẹp: trigger trg_KiemTraLichChieu_BeforeInsert.
+DROP PROCEDURE IF EXISTS sp_TaoSuatChieu //
+CREATE PROCEDURE sp_TaoSuatChieu(
+    IN p_MaSuatChieu VARCHAR(20),
+    IN p_MaPhim VARCHAR(20),
+    IN p_MaPhong VARCHAR(20),
+    IN p_NgayChieu DATE,
+    IN p_GioBatDau TIME
+)
+BEGIN
+    DECLARE v_ThoiLuong INT;
+    DECLARE v_TrangThaiPhim VARCHAR(30);
+    DECLARE v_BatDau DATETIME;
+    DECLARE v_KetThuc DATETIME;
+    IF NOT EXISTS (SELECT 1 FROM PHONG_CHIEU WHERE MaPhong = p_MaPhong) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã phòng chiếu không tồn tại!';
+    END IF;
+    IF EXISTS (SELECT 1 FROM SUAT_CHIEU WHERE MaSuatChieu = p_MaSuatChieu) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã suất chiếu đã tồn tại!';
+    END IF;
+    SELECT ThoiLuong, TrangThai INTO v_ThoiLuong, v_TrangThaiPhim FROM PHIM WHERE MaPhim = p_MaPhim;
+    IF v_ThoiLuong IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã phim không tồn tại!';
+    END IF;
+    IF v_TrangThaiPhim = 'Ngưng chiếu' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Phim đã ngưng chiếu, không thể xếp suất chiếu mới!';
+    END IF;
+    SET v_BatDau = TIMESTAMP(p_NgayChieu, p_GioBatDau);
+    IF v_BatDau <= NOW() THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Thời gian bắt đầu suất chiếu phải lớn hơn thời điểm hiện tại!';
+    END IF;
+    SET v_KetThuc = v_BatDau + INTERVAL v_ThoiLuong MINUTE;
+    IF DATE(v_KetThuc) <> p_NgayChieu THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Suất chiếu không được kéo dài qua 24h của ngày chiếu!';
+    END IF;
+    INSERT INTO SUAT_CHIEU (MaSuatChieu, MaPhim, MaPhong, NgayChieu, GioBatDau, GioKetThuc, TrangThai)
+    VALUES (p_MaSuatChieu, p_MaPhim, p_MaPhong, p_NgayChieu, TIME(v_BatDau), TIME(v_KetThuc), 'Sắp chiếu');
+    SELECT * FROM SUAT_CHIEU WHERE MaSuatChieu = p_MaSuatChieu;
+END //
+-- 11. TRA CỨU VÉ THEO MÃ VÉ HOẶC SỐ ĐIỆN THOẠI (sp_TraCuuVe)
+--     Dùng để soát vé / xử lý sự cố. Truyền NULL cho tiêu chí không dùng (cần ít nhất 1).
+DROP PROCEDURE IF EXISTS sp_TraCuuVe //
+CREATE PROCEDURE sp_TraCuuVe(
+    IN p_MaVe VARCHAR(20),
+    IN p_SDT VARCHAR(20)
+)
+BEGIN
+    IF p_MaVe IS NULL AND p_SDT IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Cần nhập Mã vé hoặc Số điện thoại để tra cứu!';
+    END IF;
+
+    SELECT dv.MaVe, kh.MaKH, kh.HoTen, kh.SDT, p.TenPhim, p.GioiHanTuoi, cr.TenRap, pc.TenPhong,
+           sc.NgayChieu, sc.GioBatDau, sc.GioKetThuc, sc.TrangThai AS TrangThaiSuat,
+           dv.SoGhe, gn.LoaiGhe, dv.GiaVe, dv.TrangThaiThanhToan, dv.NgayGioDat, dv.MaNV
+    FROM DAT_VE dv
+    JOIN KHACH_HANG kh ON dv.MaKH = kh.MaKH
+    JOIN SUAT_CHIEU sc ON dv.MaSuatChieu = sc.MaSuatChieu
+    JOIN PHIM p ON sc.MaPhim = p.MaPhim
+    JOIN PHONG_CHIEU pc ON dv.MaPhong = pc.MaPhong
+    JOIN CUM_RAP cr ON pc.MaRap = cr.MaRap
+    JOIN GHE_NGOI gn ON dv.MaPhong = gn.MaPhong AND dv.SoGhe = gn.SoGhe
+    WHERE (p_MaVe IS NULL OR dv.MaVe = p_MaVe)
+      AND (p_SDT IS NULL OR kh.SDT = p_SDT)
+    ORDER BY sc.NgayChieu DESC, sc.GioBatDau DESC;
+END //
+-- 12. MUA DỊCH VỤ F&B (sp_MuaFB)
+--     Kiểm tra combo + tính ThanhTien: trg_TinhTienMuaFNB_BeforeInsert (ThanhTien truyền 0 sẽ bị trigger ghi đè).
+--     Cộng điểm tích lũy: trg_TichDiemMuaFNB_AfterInsert.
+DROP PROCEDURE IF EXISTS sp_MuaFB //
+CREATE PROCEDURE sp_MuaFB(
+    IN p_MaKH VARCHAR(20),
+    IN p_MaCombo VARCHAR(20),
+    IN p_SoLuong INT
+)
+BEGIN
+    DECLARE v_NgayMua DATETIME;
+    IF p_SoLuong IS NULL OR p_SoLuong <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Số lượng phải lớn hơn 0!';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM KHACH_HANG WHERE MaKH = p_MaKH) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã khách hàng không tồn tại!';
+    END IF;
+    SET v_NgayMua = NOW();
+    INSERT INTO MUA_FNB (MaKH, MaCombo, NgayMua, SoLuong, ThanhTien)
+    VALUES (p_MaKH, p_MaCombo, v_NgayMua, p_SoLuong, 0);
+    SELECT kh.MaKH, kh.HoTen, fb.MaCombo, fb.TenCombo, m.SoLuong, fb.DonGia, m.ThanhTien, m.NgayMua
+    FROM MUA_FNB m
+    JOIN KHACH_HANG kh ON m.MaKH = kh.MaKH
+    JOIN DICH_VU_FNB fb ON m.MaCombo = fb.MaCombo
+    WHERE m.MaKH = p_MaKH AND m.MaCombo = p_MaCombo
+    ORDER BY m.NgayMua DESC
+    LIMIT 1;
+END //
+-- 13. BÁO CÁO DOANH THU VÉ + F&B THEO NGÀY / THÁNG / QUÝ (sp_BaoCaoDoanhThu)
+--     p_KieuBaoCao: 'NGAY' | 'THANG' | 'QUY'. p_TuNgay/p_DenNgay NULL = không giới hạn.
+--     Chỉ tính vé 'Đã thanh toán'; vé tính theo ngày đặt.
+DROP PROCEDURE IF EXISTS sp_BaoCaoDoanhThu //
+CREATE PROCEDURE sp_BaoCaoDoanhThu(
+    IN p_KieuBaoCao VARCHAR(10),
+    IN p_TuNgay DATE,
+    IN p_DenNgay DATE
+)
+BEGIN
+    DECLARE v_Kieu VARCHAR(10);
+    SET v_Kieu = UPPER(p_KieuBaoCao);
+    IF v_Kieu IS NULL OR v_Kieu NOT IN ('NGAY', 'THANG', 'QUY') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Kiểu báo cáo phải là NGAY, THANG hoặc QUY!';
+    END IF;
+    IF p_TuNgay IS NOT NULL AND p_DenNgay IS NOT NULL AND p_TuNgay > p_DenNgay THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Từ ngày phải nhỏ hơn hoặc bằng đến ngày!';
+    END IF;
+
+    SELECT x.KyBaoCao,
+           SUM(CASE WHEN x.Nguon = 'VE' THEN x.SoTien ELSE 0 END) AS DoanhThuVe,
+           SUM(CASE WHEN x.Nguon = 'FB' THEN x.SoTien ELSE 0 END) AS DoanhThuFB,
+           SUM(x.SoTien) AS TongDoanhThu
+    FROM (
+        SELECT u.Nguon, u.SoTien,
+               CASE v_Kieu
+                   WHEN 'NGAY'  THEN DATE_FORMAT(u.Ngay, '%Y-%m-%d')
+                   WHEN 'THANG' THEN DATE_FORMAT(u.Ngay, '%Y-%m')
+                   ELSE CONCAT(YEAR(u.Ngay), '-Q', QUARTER(u.Ngay))
+               END AS KyBaoCao
+        FROM (
+            SELECT 'VE' AS Nguon, DATE(NgayGioDat) AS Ngay, GiaVe AS SoTien
+            FROM DAT_VE WHERE TrangThaiThanhToan = 'Đã thanh toán'
+            UNION ALL
+            SELECT 'FB', DATE(NgayMua), ThanhTien FROM MUA_FNB
+        ) u
+        WHERE (p_TuNgay IS NULL OR u.Ngay >= p_TuNgay)
+          AND (p_DenNgay IS NULL OR u.Ngay <= p_DenNgay)
+    ) x
+    GROUP BY x.KyBaoCao
+    ORDER BY x.KyBaoCao;
+END //
+-- 14. SO SÁNH DOANH THU GIỮA CÁC CỤM RẠP (sp_BaoCaoDoanhThuTheoRap)
+--     Chỉ tính doanh thu vé: giao dịch F&B hiện không gắn với cụm rạp nào trong lược đồ.
+DROP PROCEDURE IF EXISTS sp_BaoCaoDoanhThuTheoRap //
+CREATE PROCEDURE sp_BaoCaoDoanhThuTheoRap(
+    IN p_TuNgay DATE,
+    IN p_DenNgay DATE
+)
+BEGIN
+    IF p_TuNgay IS NOT NULL AND p_DenNgay IS NOT NULL AND p_TuNgay > p_DenNgay THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Từ ngày phải nhỏ hơn hoặc bằng đến ngày!';
+    END IF;
+    SELECT cr.MaRap, cr.TenRap,
+           COUNT(dv.MaVe) AS SoVeDaBan,
+           IFNULL(SUM(dv.GiaVe), 0) AS DoanhThuVe
+    FROM CUM_RAP cr
+    LEFT JOIN PHONG_CHIEU pc ON pc.MaRap = cr.MaRap
+    LEFT JOIN DAT_VE dv ON dv.MaPhong = pc.MaPhong
+                       AND dv.TrangThaiThanhToan = 'Đã thanh toán'
+                       AND (p_TuNgay IS NULL OR DATE(dv.NgayGioDat) >= p_TuNgay)
+                       AND (p_DenNgay IS NULL OR DATE(dv.NgayGioDat) <= p_DenNgay)
+    GROUP BY cr.MaRap, cr.TenRap
+    ORDER BY DoanhThuVe DESC;
+END //
+-- 15. TOP 5 PHIM CÓ DOANH THU PHÒNG VÉ CAO NHẤT TRONG THÁNG (sp_Top5PhimDoanhThuThang)
+DROP PROCEDURE IF EXISTS sp_Top5PhimDoanhThuThang //
+CREATE PROCEDURE sp_Top5PhimDoanhThuThang(
+    IN p_Thang INT,
+    IN p_Nam INT
+)
+BEGIN
+    DECLARE v_Dau DATE;
+    IF p_Thang IS NULL OR p_Thang NOT BETWEEN 1 AND 12 OR p_Nam IS NULL OR p_Nam < 2000 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Tháng (1-12) hoặc năm không hợp lệ!';
+    END IF;
+    SET v_Dau = STR_TO_DATE(CONCAT(p_Nam, '-', p_Thang, '-01'), '%Y-%m-%d');
+    SELECT p.MaPhim, p.TenPhim, COUNT(dv.MaVe) AS SoVeDaBan, SUM(dv.GiaVe) AS DoanhThu
+    FROM DAT_VE dv
+    JOIN SUAT_CHIEU sc ON dv.MaSuatChieu = sc.MaSuatChieu
+    JOIN PHIM p ON sc.MaPhim = p.MaPhim
+    WHERE dv.TrangThaiThanhToan = 'Đã thanh toán'
+      AND dv.NgayGioDat >= v_Dau
+      AND dv.NgayGioDat < v_Dau + INTERVAL 1 MONTH
+    GROUP BY p.MaPhim, p.TenPhim
+    ORDER BY DoanhThu DESC
+    LIMIT 5;
+END //
+-- 16. THỐNG KÊ CA LÀM VIỆC VÀ SỐ GIAO DỊCH XỬ LÝ CỦA NHÂN VIÊN BÁN HÀNG (sp_ThongKeNhanVien)
+--     Giao dịch = vé đã thanh toán do nhân viên xuất tại quầy (DAT_VE.MaNV).
+--     p_MaRap/p_TuNgay/p_DenNgay NULL = không lọc.
+DROP PROCEDURE IF EXISTS sp_ThongKeNhanVien //
+CREATE PROCEDURE sp_ThongKeNhanVien(
+    IN p_MaRap VARCHAR(20),
+    IN p_TuNgay DATE,
+    IN p_DenNgay DATE
+)
+BEGIN
+    IF p_TuNgay IS NOT NULL AND p_DenNgay IS NOT NULL AND p_TuNgay > p_DenNgay THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Từ ngày phải nhỏ hơn hoặc bằng đến ngày!';
+    END IF;
+    SELECT nv.MaNV, nv.HoTen, cr.TenRap, bh.CaLamViec,
+           COUNT(dv.MaVe) AS TongGiaoDichXuLy,
+           IFNULL(SUM(dv.GiaVe), 0) AS TongDoanhThuVe
+    FROM NHAN_VIEN nv
+    JOIN NV_BAN_HANG bh ON bh.MaNV = nv.MaNV
+    JOIN CUM_RAP cr ON cr.MaRap = nv.MaRap
+    LEFT JOIN DAT_VE dv ON dv.MaNV = nv.MaNV
+                       AND dv.TrangThaiThanhToan = 'Đã thanh toán'
+                       AND (p_TuNgay IS NULL OR DATE(dv.NgayGioDat) >= p_TuNgay)
+                       AND (p_DenNgay IS NULL OR DATE(dv.NgayGioDat) <= p_DenNgay)
+    WHERE (p_MaRap IS NULL OR nv.MaRap = p_MaRap)
+    GROUP BY nv.MaNV, nv.HoTen, cr.TenRap, bh.CaLamViec
+    ORDER BY TongGiaoDichXuLy DESC, nv.MaNV ASC;
 END //
 DELIMITER ;
