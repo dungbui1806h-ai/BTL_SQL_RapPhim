@@ -1,8 +1,13 @@
 USE QuanLyRapPhim;
+
 SET NAMES utf8mb4;
-DELIMITER //
+
+DELIMITER /
+/
 -- 1. THỦ TỤC THÊM KHÁCH HÀNG (sp_ThemKhachHang)
-DROP PROCEDURE IF EXISTS sp_ThemKhachHang //
+DROP PROCEDURE IF EXISTS sp_ThemKhachHang /
+/
+
 CREATE PROCEDURE sp_ThemKhachHang(
     IN p_MaKH VARCHAR(20),
     IN p_HoTen VARCHAR(150),
@@ -23,11 +28,15 @@ BEGIN
     INSERT INTO KHACH_HANG (MaKH, HoTen, SDT, Email, NgaySinh, DiemTichLuy)
     VALUES (p_MaKH, p_HoTen, p_SDT, p_Email, p_NgaySinh, 0);
     SELECT * FROM KHACH_HANG WHERE MaKH = p_MaKH;
-END //
+END
+/
+/
 -- 2. THỦ TỤC ĐẶT VÉ XEM PHIM TÍNH TIỀN TỰ ĐỘNG (sp_DatVeXemPhim)
 --    Chống trùng ghế + độ tuổi: trigger trg_KiemTraDatVe_BeforeInsert. Tích điểm: trigger tích điểm vé.
 --    p_MaNV: nhân viên xuất vé tại quầy (NULL = đặt online).
-DROP PROCEDURE IF EXISTS sp_DatVeXemPhim //
+DROP PROCEDURE IF EXISTS sp_DatVeXemPhim /
+/
+
 CREATE PROCEDURE sp_DatVeXemPhim(
     IN p_MaVe VARCHAR(20),
     IN p_MaKH VARCHAR(20),
@@ -80,9 +89,13 @@ BEGIN
     JOIN CUM_RAP cr ON pc.MaRap = cr.MaRap
     JOIN GHE_NGOI gn ON dv.MaPhong = gn.MaPhong AND dv.SoGhe = gn.SoGhe
     WHERE dv.MaVe = p_MaVe;
-END //
+END
+/
+/
 -- 3. THỦ TỤC TÌM KIẾM LỊCH CHIẾU THEO BỘ LỌC (sp_TimKiemLichChieu)
-DROP PROCEDURE IF EXISTS sp_TimKiemLichChieu //
+DROP PROCEDURE IF EXISTS sp_TimKiemLichChieu /
+/
+
 CREATE PROCEDURE sp_TimKiemLichChieu(
     IN p_TenPhim VARCHAR(200),
     IN p_NgayChieu DATE,
@@ -103,9 +116,13 @@ BEGIN
       AND (p_MaRap IS NULL OR cr.MaRap = p_MaRap)
     GROUP BY sc.MaSuatChieu, p.TenPhim, p.ThoiLuong, p.GioiHanTuoi, cr.TenRap, cr.SoNha, cr.Duong, cr.QuanHuyen, cr.TinhTP, pc.TenPhong, pc.LoaiPhong, sc.NgayChieu, sc.GioBatDau, sc.GioKetThuc, sc.TrangThai, pc.TongSoGhe
     ORDER BY sc.NgayChieu ASC, sc.GioBatDau ASC;
-END //
+END
+/
+/
 -- 4. THỦ TỤC KIỂM TRA DANH SÁCH GHẾ TRỐNG CỦA SUẤT CHIẾU (sp_LayDanhSachGheTrong)
-DROP PROCEDURE IF EXISTS sp_LayDanhSachGheTrong //
+DROP PROCEDURE IF EXISTS sp_LayDanhSachGheTrong /
+/
+
 CREATE PROCEDURE sp_LayDanhSachGheTrong(
     IN p_MaSuatChieu VARCHAR(20)
 )
@@ -116,9 +133,13 @@ BEGIN
     LEFT JOIN DAT_VE dv ON sc.MaSuatChieu = dv.MaSuatChieu AND gn.MaPhong = dv.MaPhong AND gn.SoGhe = dv.SoGhe
     WHERE sc.MaSuatChieu = p_MaSuatChieu AND dv.MaVe IS NULL
     ORDER BY gn.SoGhe ASC;
-END //
+END
+/
+/
 -- 5. THỦ TỤC XÁC NHẬN THANH TOÁN HÓA ĐƠN VÉ (sp_ThanhToanVe)
-DROP PROCEDURE IF EXISTS sp_ThanhToanVe //
+DROP PROCEDURE IF EXISTS sp_ThanhToanVe /
+/
+
 CREATE PROCEDURE sp_ThanhToanVe(
     IN p_MaVe VARCHAR(20)
 )
@@ -130,9 +151,13 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Thông báo: Vé này đã được thanh toán trước đó!';
     END IF;
     UPDATE DAT_VE SET TrangThaiThanhToan = 'Đã thanh toán' WHERE MaVe = p_MaVe;
-END //
+END
+/
+/
 -- 6. THỦ TỤC THÊM NHÂN VIÊN ĐẢM BẢO RÀNG BUỘC TOÀN PHẦN & RỜI RẠC (sp_ThemNhanVien)
-DROP PROCEDURE IF EXISTS sp_ThemNhanVien //
+DROP PROCEDURE IF EXISTS sp_ThemNhanVien /
+/
+
 CREATE PROCEDURE sp_ThemNhanVien(
     IN p_MaNV VARCHAR(20),
     IN p_HoTen VARCHAR(150),
@@ -172,10 +197,14 @@ BEGIN
         VALUES (p_MaNV, p_ChungChiKyThuat, p_KhuVucPhuTrach);
     END IF;
     COMMIT;
-END //
+END
+/
+/
 -- 7. THỦ TỤC THÊM PHIM MỚI (sp_ThemPhim)
 --    [SỬA] p_GioiHanTuoi NULL trước đây lọt qua kiểm tra (NULL NOT IN (...) = NULL)
-DROP PROCEDURE IF EXISTS sp_ThemPhim //
+DROP PROCEDURE IF EXISTS sp_ThemPhim /
+/
+
 CREATE PROCEDURE sp_ThemPhim(
     IN p_MaPhim VARCHAR(20),
     IN p_TenPhim VARCHAR(200),
@@ -197,10 +226,14 @@ BEGIN
     INSERT INTO PHIM (MaPhim, TenPhim, DaoDien, ThoiLuong, NgayKhoiChieu, GioiHanTuoi)
     VALUES (p_MaPhim, p_TenPhim, p_DaoDien, p_ThoiLuong, p_NgayKhoiChieu, p_GioiHanTuoi);
     SELECT * FROM PHIM WHERE MaPhim = p_MaPhim;
-END //
+END
+/
+/
 -- 8. CẬP NHẬT THÔNG TIN PHIM (sp_CapNhatPhim)
 --    Tham số nào truyền NULL thì giữ nguyên giá trị cũ.
-DROP PROCEDURE IF EXISTS sp_CapNhatPhim //
+DROP PROCEDURE IF EXISTS sp_CapNhatPhim /
+/
+
 CREATE PROCEDURE sp_CapNhatPhim(
     IN p_MaPhim VARCHAR(20),
     IN p_TenPhim VARCHAR(200),
@@ -238,11 +271,15 @@ BEGIN
         TrangThai     = IFNULL(p_TrangThai, TrangThai)
     WHERE MaPhim = p_MaPhim;
     SELECT * FROM PHIM WHERE MaPhim = p_MaPhim;
-END //
+END
+/
+/
 -- 9. GỠ BỎ PHIM (sp_GoBoPhim) - Ràng buộc toàn vẹn tham chiếu (mục 4.4)
 --    Phim đã có suất chiếu (đồng nghĩa có thể đã có vé) => chỉ chuyển 'Ngưng chiếu'.
 --    Phim chưa có suất chiếu nào => xóa hẳn (các bảng con như thể loại/diễn viên cần ON DELETE CASCADE).
-DROP PROCEDURE IF EXISTS sp_GoBoPhim //
+DROP PROCEDURE IF EXISTS sp_GoBoPhim /
+/
+
 CREATE PROCEDURE sp_GoBoPhim(
     IN p_MaPhim VARCHAR(20)
 )
@@ -258,11 +295,15 @@ BEGIN
         DELETE FROM PHIM WHERE MaPhim = p_MaPhim;
         SELECT p_MaPhim AS MaPhim, 'Đã xóa' AS KetQua, 'Phim chưa có suất chiếu nên đã được xóa khỏi hệ thống.' AS GhiChu;
     END IF;
-END //
+END
+/
+/
 -- 10. TẠO SUẤT CHIẾU (sp_TaoSuatChieu)
 --     Giờ kết thúc = giờ bắt đầu + thời lượng phim.
 --     Chồng lịch + 15 phút dọn dẹp: trigger trg_KiemTraLichChieu_BeforeInsert.
-DROP PROCEDURE IF EXISTS sp_TaoSuatChieu //
+DROP PROCEDURE IF EXISTS sp_TaoSuatChieu /
+/
+
 CREATE PROCEDURE sp_TaoSuatChieu(
     IN p_MaSuatChieu VARCHAR(20),
     IN p_MaPhim VARCHAR(20),
@@ -299,10 +340,14 @@ BEGIN
     INSERT INTO SUAT_CHIEU (MaSuatChieu, MaPhim, MaPhong, NgayChieu, GioBatDau, GioKetThuc, TrangThai)
     VALUES (p_MaSuatChieu, p_MaPhim, p_MaPhong, p_NgayChieu, TIME(v_BatDau), TIME(v_KetThuc), 'Sắp chiếu');
     SELECT * FROM SUAT_CHIEU WHERE MaSuatChieu = p_MaSuatChieu;
-END //
+END
+/
+/
 -- 11. TRA CỨU VÉ THEO MÃ VÉ HOẶC SỐ ĐIỆN THOẠI (sp_TraCuuVe)
 --     Dùng để soát vé / xử lý sự cố. Truyền NULL cho tiêu chí không dùng (cần ít nhất 1).
-DROP PROCEDURE IF EXISTS sp_TraCuuVe //
+DROP PROCEDURE IF EXISTS sp_TraCuuVe /
+/
+
 CREATE PROCEDURE sp_TraCuuVe(
     IN p_MaVe VARCHAR(20),
     IN p_SDT VARCHAR(20)
@@ -325,11 +370,15 @@ BEGIN
     WHERE (p_MaVe IS NULL OR dv.MaVe = p_MaVe)
       AND (p_SDT IS NULL OR kh.SDT = p_SDT)
     ORDER BY sc.NgayChieu DESC, sc.GioBatDau DESC;
-END //
+END
+/
+/
 -- 12. MUA DỊCH VỤ F&B (sp_MuaFB)
 --     Kiểm tra combo + tính ThanhTien: trg_TinhTienMuaFNB_BeforeInsert (ThanhTien truyền 0 sẽ bị trigger ghi đè).
 --     Cộng điểm tích lũy: trg_TichDiemMuaFNB_AfterInsert.
-DROP PROCEDURE IF EXISTS sp_MuaFB //
+DROP PROCEDURE IF EXISTS sp_MuaFB /
+/
+
 CREATE PROCEDURE sp_MuaFB(
     IN p_MaKH VARCHAR(20),
     IN p_MaCombo VARCHAR(20),
@@ -353,5 +402,8 @@ BEGIN
     WHERE m.MaKH = p_MaKH AND m.MaCombo = p_MaCombo
     ORDER BY m.NgayMua DESC
     LIMIT 1;
-END //
-DELIMITER ;
+END
+/
+/
+
+DELIMITER;

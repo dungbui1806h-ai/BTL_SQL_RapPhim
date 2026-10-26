@@ -1,8 +1,13 @@
 USE QuanLyRapPhim;
+
 SET NAMES utf8mb4;
-DELIMITER //
+
+DELIMITER /
+/
 -- 1. TRIGGER CHỐNG ĐẶT TRÙNG GHẾ & KIỂM TRA ĐỘ TUỔI (trg_KiemTraDatVe_BeforeInsert)
-DROP TRIGGER IF EXISTS trg_KiemTraDatVe_BeforeInsert //
+DROP TRIGGER IF EXISTS trg_KiemTraDatVe_BeforeInsert /
+/
+
 CREATE TRIGGER trg_KiemTraDatVe_BeforeInsert
 BEFORE INSERT ON DAT_VE
 FOR EACH ROW
@@ -11,7 +16,7 @@ BEGIN
     DECLARE v_GioiHanTuoi VARCHAR(10);
     DECLARE v_NgaySinhKH DATE;
     DECLARE v_TuoiKhachHang INT;
-    IF EXISTS (
+        IF EXISTS (
         SELECT 1 FROM DAT_VE
         WHERE MaSuatChieu = NEW.MaSuatChieu AND MaPhong = NEW.MaPhong AND SoGhe = NEW.SoGhe
     ) THEN
@@ -33,9 +38,13 @@ BEGIN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Độ tuổi: Khách hàng chưa đủ 18 tuổi tính đến ngày chiếu để xem phim 18+!';
         END IF;
     END IF;
-END //
+END
+/
+/
 -- 2. TRIGGER TÍCH ĐIỂM TỰ ĐỘNG KHI TẠO VÉ ĐÃ THANH TOÁN NGAY (trg_TichDiemVe_AfterInsert)
-DROP TRIGGER IF EXISTS trg_TichDiemVe_AfterInsert //
+DROP TRIGGER IF EXISTS trg_TichDiemVe_AfterInsert /
+/
+
 CREATE TRIGGER trg_TichDiemVe_AfterInsert
 AFTER INSERT ON DAT_VE
 FOR EACH ROW
@@ -45,9 +54,13 @@ BEGIN
         SET v_DiemCong = FLOOR(NEW.GiaVe / 10000);
         UPDATE KHACH_HANG SET DiemTichLuy = DiemTichLuy + v_DiemCong WHERE MaKH = NEW.MaKH;
     END IF;
-END //
+END
+/
+/
 -- 3. TRIGGER TÍCH ĐIỂM TỰ ĐỘNG KHI CẬP NHẬT THANH TOÁN HÓA ĐƠN VÉ (trg_TichDiemVe_AfterUpdate)
-DROP TRIGGER IF EXISTS trg_TichDiemVe_AfterUpdate //
+DROP TRIGGER IF EXISTS trg_TichDiemVe_AfterUpdate /
+/
+
 CREATE TRIGGER trg_TichDiemVe_AfterUpdate
 AFTER UPDATE ON DAT_VE
 FOR EACH ROW
@@ -57,9 +70,13 @@ BEGIN
         SET v_DiemCong = FLOOR(NEW.GiaVe / 10000);
         UPDATE KHACH_HANG SET DiemTichLuy = DiemTichLuy + v_DiemCong WHERE MaKH = NEW.MaKH;
     END IF;
-END //
+END
+/
+/
 -- 4. TRIGGER TỰ ĐỘNG TÍNH TIỀN & CỘNG ĐIỂM KHI MUA F&B
-DROP TRIGGER IF EXISTS trg_TinhTienMuaFNB_BeforeInsert //
+DROP TRIGGER IF EXISTS trg_TinhTienMuaFNB_BeforeInsert /
+/
+
 CREATE TRIGGER trg_TinhTienMuaFNB_BeforeInsert
 BEFORE INSERT ON MUA_FNB
 FOR EACH ROW
@@ -70,8 +87,13 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã Combo F&B không tồn tại!';
     END IF;
     SET NEW.ThanhTien = NEW.SoLuong * v_DonGia;
-END //
-DROP TRIGGER IF EXISTS trg_TichDiemMuaFNB_AfterInsert //
+END
+/
+/
+
+DROP TRIGGER IF EXISTS trg_TichDiemMuaFNB_AfterInsert /
+/
+
 CREATE TRIGGER trg_TichDiemMuaFNB_AfterInsert
 AFTER INSERT ON MUA_FNB
 FOR EACH ROW
@@ -79,9 +101,13 @@ BEGIN
     DECLARE v_DiemCong INT DEFAULT 0;
     SET v_DiemCong = FLOOR(NEW.ThanhTien / 10000);
     UPDATE KHACH_HANG SET DiemTichLuy = DiemTichLuy + v_DiemCong WHERE MaKH = NEW.MaKH;
-END //
+END
+/
+/
 -- 5. TRIGGER CHỐNG CHỒNG CHÉO THỜI GIAN XẾP LỊCH CHIẾU (trg_KiemTraLichChieu_BeforeInsert)
-DROP TRIGGER IF EXISTS trg_KiemTraLichChieu_BeforeInsert //
+DROP TRIGGER IF EXISTS trg_KiemTraLichChieu_BeforeInsert /
+/
+
 CREATE TRIGGER trg_KiemTraLichChieu_BeforeInsert
 BEFORE INSERT ON SUAT_CHIEU
 FOR EACH ROW
@@ -95,9 +121,13 @@ BEGIN
     ) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Xếp lịch: Phòng chiếu bị trùng giờ hoặc chưa đảm bảo 15 phút dọn dẹp giữa 2 suất chiếu!';
     END IF;
-END //
+END
+/
+/
 -- 6. BỘ 3 TRIGGER KIỂM TRA TÍNH RỜI RẠC (DISJOINT) CỦA NHÂN VIÊN (ISA HIERARCHY)
-DROP TRIGGER IF EXISTS trg_Disjoint_NVQuanLy_BeforeInsert //
+DROP TRIGGER IF EXISTS trg_Disjoint_NVQuanLy_BeforeInsert /
+/
+
 CREATE TRIGGER trg_Disjoint_NVQuanLy_BeforeInsert
 BEFORE INSERT ON NV_QUAN_LY
 FOR EACH ROW
@@ -106,8 +136,13 @@ BEGIN
        OR EXISTS (SELECT 1 FROM NV_KY_THUAT WHERE MaNV = NEW.MaNV) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Ràng buộc Rời rạc (ISA): Nhân viên này đã thuộc bộ phận Bán hàng hoặc Kỹ thuật!';
     END IF;
-END //
-DROP TRIGGER IF EXISTS trg_Disjoint_NVBanHang_BeforeInsert //
+END
+/
+/
+
+DROP TRIGGER IF EXISTS trg_Disjoint_NVBanHang_BeforeInsert /
+/
+
 CREATE TRIGGER trg_Disjoint_NVBanHang_BeforeInsert
 BEFORE INSERT ON NV_BAN_HANG
 FOR EACH ROW
@@ -116,8 +151,13 @@ BEGIN
        OR EXISTS (SELECT 1 FROM NV_KY_THUAT WHERE MaNV = NEW.MaNV) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Ràng buộc Rời rạc (ISA): Nhân viên này đã thuộc bộ phận Quản lý hoặc Kỹ thuật!';
     END IF;
-END //
-DROP TRIGGER IF EXISTS trg_Disjoint_NVKyThuat_BeforeInsert //
+END
+/
+/
+
+DROP TRIGGER IF EXISTS trg_Disjoint_NVKyThuat_BeforeInsert /
+/
+
 CREATE TRIGGER trg_Disjoint_NVKyThuat_BeforeInsert
 BEFORE INSERT ON NV_KY_THUAT
 FOR EACH ROW
@@ -126,5 +166,8 @@ BEGIN
        OR EXISTS (SELECT 1 FROM NV_BAN_HANG WHERE MaNV = NEW.MaNV) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Ràng buộc Rời rạc (ISA): Nhân viên này đã thuộc bộ phận Quản lý hoặc Bán hàng!';
     END IF;
-END //
-DELIMITER ;
+END
+/
+/
+
+DELIMITER;
