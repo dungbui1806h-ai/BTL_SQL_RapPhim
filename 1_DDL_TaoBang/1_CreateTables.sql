@@ -40,9 +40,11 @@ CREATE TABLE PHIM (
     ThoiLuong INT NOT NULL COMMENT 'Don vi: phut',
     NgayKhoiChieu DATE NOT NULL,
     GioiHanTuoi VARCHAR(10) NOT NULL DEFAULT 'G',
+    TrangThai VARCHAR(30) NOT NULL DEFAULT 'Sắp chiếu',
     CONSTRAINT pk_phim PRIMARY KEY (MaPhim),
     CONSTRAINT ck_phim_thoi_luong CHECK (ThoiLuong > 0),
-    CONSTRAINT ck_phim_do_tuoi CHECK (GioiHanTuoi IN ('G', 'PG', '13+', '18+'))
+    CONSTRAINT ck_phim_do_tuoi CHECK (GioiHanTuoi IN ('G', 'PG', '13+', '18+', 'P', 'K', 'T13', 'T16', 'T18')),
+    CONSTRAINT ck_phim_trang_thai CHECK (TrangThai IN ('Sắp chiếu', 'Đang chiếu', 'Ngưng chiếu'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE PHIM_THE_LOAI (
@@ -50,7 +52,7 @@ CREATE TABLE PHIM_THE_LOAI (
     TheLoai VARCHAR(100) NOT NULL,
     CONSTRAINT pk_phim_the_loai PRIMARY KEY (MaPhim, TheLoai),
     CONSTRAINT fk_the_loai_phim FOREIGN KEY (MaPhim) REFERENCES PHIM (MaPhim)
-        ON DELETE RESTRICT ON UPDATE RESTRICT
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE PHIM_DIEN_VIEN (
@@ -58,7 +60,7 @@ CREATE TABLE PHIM_DIEN_VIEN (
     DienVien VARCHAR(150) NOT NULL,
     CONSTRAINT pk_phim_dien_vien PRIMARY KEY (MaPhim, DienVien),
     CONSTRAINT fk_dien_vien_phim FOREIGN KEY (MaPhim) REFERENCES PHIM (MaPhim)
-        ON DELETE RESTRICT ON UPDATE RESTRICT
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Thuc the yeu: so ghe chi duy nhat trong tung phong.
@@ -192,6 +194,7 @@ CREATE TABLE DAT_VE (
     MaSuatChieu VARCHAR(20) NOT NULL,
     MaPhong VARCHAR(20) NOT NULL,
     SoGhe VARCHAR(10) NOT NULL,
+    MaNV VARCHAR(20) DEFAULT NULL,
     CONSTRAINT pk_dat_ve PRIMARY KEY (MaVe),
     CONSTRAINT uq_dat_ve_ghe UNIQUE (MaSuatChieu, MaPhong, SoGhe),
     CONSTRAINT ck_dat_ve_gia CHECK (GiaVe >= 0),
@@ -205,5 +208,8 @@ CREATE TABLE DAT_VE (
         ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_dat_ve_ghe FOREIGN KEY (MaPhong, SoGhe)
         REFERENCES GHE_NGOI (MaPhong, SoGhe)
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_datve_nv FOREIGN KEY (MaNV)
+        REFERENCES NHAN_VIEN (MaNV)
         ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

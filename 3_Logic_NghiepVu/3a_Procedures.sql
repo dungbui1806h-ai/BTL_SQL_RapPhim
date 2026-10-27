@@ -336,22 +336,20 @@ CREATE PROCEDURE sp_MuaFB(
     IN p_SoLuong INT
 )
 BEGIN
-    DECLARE v_NgayMua DATETIME;
+    DECLARE v_NgayMua DATETIME(6);
     IF p_SoLuong IS NULL OR p_SoLuong <= 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Số lượng phải lớn hơn 0!';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM KHACH_HANG WHERE MaKH = p_MaKH) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi: Mã khách hàng không tồn tại!';
     END IF;
-    SET v_NgayMua = NOW();
+    SET v_NgayMua = NOW(6);
     INSERT INTO MUA_FNB (MaKH, MaCombo, NgayMua, SoLuong, ThanhTien)
     VALUES (p_MaKH, p_MaCombo, v_NgayMua, p_SoLuong, 0);
     SELECT kh.MaKH, kh.HoTen, fb.MaCombo, fb.TenCombo, m.SoLuong, fb.DonGia, m.ThanhTien, m.NgayMua
     FROM MUA_FNB m
     JOIN KHACH_HANG kh ON m.MaKH = kh.MaKH
     JOIN DICH_VU_FNB fb ON m.MaCombo = fb.MaCombo
-    WHERE m.MaKH = p_MaKH AND m.MaCombo = p_MaCombo
-    ORDER BY m.NgayMua DESC
-    LIMIT 1;
+    WHERE m.MaKH = p_MaKH AND m.MaCombo = p_MaCombo AND m.NgayMua = v_NgayMua;
 END //
 DELIMITER ;

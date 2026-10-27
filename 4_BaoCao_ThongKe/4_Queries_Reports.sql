@@ -1,3 +1,6 @@
+USE QuanLyRapPhim;
+SET NAMES utf8mb4;
+
 -- TOP 5 PHIM CÓ DOANH THU CAO NHẤT
 SELECT 
     p.MaPhim,
@@ -66,7 +69,6 @@ GROUP BY MONTH(f.NgayMua), YEAR(f.NgayMua);
 -- Cách chạy để lấy kết quả từ View này:
  SELECT * FROM view_DoanhThuToanDien ORDER BY Nam DESC, Thang DESC;
 
-DELIMITER //
 
 
 -- ĐÁNH GIÁ HIỆU SUẤT NHÂN VIÊN BÁN HÀNG (Dùng LEFT JOIN và Subquery)
@@ -75,9 +77,17 @@ SELECT
     nv.HoTen,
     cr.TenRap,
     bh.CaLamViec,
-    bh.DoanhSoThang AS ChiTieuĐuocGiao,
-    (SELECT COUNT(*) FROM MUA_FNB WHERE ThanhTien > 100000) AS SoDonHangLon
+    bh.DoanhSoThang AS ChiTieuDuocGiao,
+    COUNT(dv.MaVe) AS TongSoVeBanTaiQuay,
+    COALESCE(SUM(dv.GiaVe), 0) AS DoanhThuVeThucTe,
+    (
+        SELECT COUNT(*) 
+        FROM DAT_VE dv2 
+        WHERE dv2.MaNV = nv.MaNV AND dv2.GiaVe >= 120000
+    ) AS SoVeGiaCao
 FROM NHAN_VIEN nv
 JOIN NV_BAN_HANG bh ON nv.MaNV = bh.MaNV
 JOIN CUM_RAP cr ON nv.MaRap = cr.MaRap
-ORDER BY bh.DoanhSoThang DESC;
+LEFT JOIN DAT_VE dv ON nv.MaNV = dv.MaNV AND dv.TrangThaiThanhToan = 'Đã thanh toán'
+GROUP BY nv.MaNV, nv.HoTen, cr.TenRap, bh.CaLamViec, bh.DoanhSoThang
+ORDER BY DoanhThuVeThucTe DESC;

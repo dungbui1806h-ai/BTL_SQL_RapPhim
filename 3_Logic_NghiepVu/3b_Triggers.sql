@@ -34,6 +34,21 @@ BEGIN
         END IF;
     END IF;
 END //
+DROP TRIGGER IF EXISTS trg_KiemTraDatVe_BeforeUpdate //
+CREATE TRIGGER trg_KiemTraDatVe_BeforeUpdate
+BEFORE UPDATE ON DAT_VE
+FOR EACH ROW
+BEGIN
+    IF (NEW.MaSuatChieu <> OLD.MaSuatChieu OR NEW.MaPhong <> OLD.MaPhong OR NEW.SoGhe <> OLD.SoGhe) THEN
+        IF EXISTS (
+            SELECT 1 FROM DAT_VE
+            WHERE MaSuatChieu = NEW.MaSuatChieu AND MaPhong = NEW.MaPhong AND SoGhe = NEW.SoGhe
+              AND MaVe <> NEW.MaVe
+        ) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Double-booking: Ghế ngồi này đã có người đặt trong suất chiếu đã chọn!';
+        END IF;
+    END IF;
+END //
 -- 2. TRIGGER TÍCH ĐIỂM TỰ ĐỘNG KHI TẠO VÉ ĐÃ THANH TOÁN NGAY (trg_TichDiemVe_AfterInsert)
 DROP TRIGGER IF EXISTS trg_TichDiemVe_AfterInsert //
 CREATE TRIGGER trg_TichDiemVe_AfterInsert
@@ -90,6 +105,22 @@ BEGIN
         SELECT 1 FROM SUAT_CHIEU sc
         WHERE sc.MaPhong = NEW.MaPhong
           AND sc.NgayChieu = NEW.NgayChieu
+          AND NEW.GioBatDau < ADDTIME(sc.GioKetThuc, '00:15:00')
+          AND ADDTIME(NEW.GioKetThuc, '00:15:00') > sc.GioBatDau
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Lỗi Xếp lịch: Phòng chiếu bị trùng giờ hoặc chưa đảm bảo 15 phút dọn dẹp giữa 2 suất chiếu!';
+    END IF;
+END //
+DROP TRIGGER IF EXISTS trg_KiemTraLichChieu_BeforeUpdate //
+CREATE TRIGGER trg_KiemTraLichChieu_BeforeUpdate
+BEFORE UPDATE ON SUAT_CHIEU
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM SUAT_CHIEU sc
+        WHERE sc.MaPhong = NEW.MaPhong
+          AND sc.NgayChieu = NEW.NgayChieu
+          AND sc.MaSuatChieu <> NEW.MaSuatChieu
           AND NEW.GioBatDau < ADDTIME(sc.GioKetThuc, '00:15:00')
           AND ADDTIME(NEW.GioKetThuc, '00:15:00') > sc.GioBatDau
     ) THEN
