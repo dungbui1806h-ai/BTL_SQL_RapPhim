@@ -1,4 +1,4 @@
--- PHAN 1: TAO CSDL QUAN LY CHUOI RAP CHIEU PHIM
+﻿-- PHAN 1: TAO CSDL QUAN LY CHUOI RAP CHIEU PHIM
 -- Theo luoc do quan he trong bao cao phan 4 cua nhom 4.
 -- MySQL 8.0.16+ (CHECK duoc thuc thi), InnoDB, UTF-8.
 -- Chay mot lan tren CSDL moi. Khong DROP de tranh mat du lieu.
@@ -40,11 +40,11 @@ CREATE TABLE PHIM (
     ThoiLuong INT NOT NULL COMMENT 'Don vi: phut',
     NgayKhoiChieu DATE NOT NULL,
     GioiHanTuoi VARCHAR(10) NOT NULL DEFAULT 'G',
-    TrangThai VARCHAR(30) NOT NULL DEFAULT 'Sắp chiếu',
+    TrangThai VARCHAR(30) NOT NULL DEFAULT 'Sß║»p chiß║┐u',
     CONSTRAINT pk_phim PRIMARY KEY (MaPhim),
     CONSTRAINT ck_phim_thoi_luong CHECK (ThoiLuong > 0),
     CONSTRAINT ck_phim_do_tuoi CHECK (GioiHanTuoi IN ('G', 'PG', '13+', '18+', 'P', 'K', 'T13', 'T16', 'T18')),
-    CONSTRAINT ck_phim_trang_thai CHECK (TrangThai IN ('Sắp chiếu', 'Đang chiếu', 'Ngưng chiếu'))
+    CONSTRAINT ck_phim_trang_thai CHECK (TrangThai IN ('Sß║»p chiß║┐u', '─Éang chiß║┐u', 'Ng╞░ng chiß║┐u'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE PHIM_THE_LOAI (
@@ -67,10 +67,10 @@ CREATE TABLE PHIM_DIEN_VIEN (
 CREATE TABLE GHE_NGOI (
     MaPhong VARCHAR(20) NOT NULL,
     SoGhe VARCHAR(10) NOT NULL,
-    LoaiGhe VARCHAR(20) NOT NULL DEFAULT 'Thường',
+    LoaiGhe VARCHAR(20) NOT NULL DEFAULT 'Th╞░ß╗¥ng',
     PhuThuGhe DECIMAL(12,2) NOT NULL DEFAULT 0,
     CONSTRAINT pk_ghe_ngoi PRIMARY KEY (MaPhong, SoGhe),
-    CONSTRAINT ck_ghe_loai CHECK (LoaiGhe IN ('Thường', 'VIP', 'Sweetbox')),
+    CONSTRAINT ck_ghe_loai CHECK (LoaiGhe IN ('Th╞░ß╗¥ng', 'VIP', 'Sweetbox')),
     CONSTRAINT ck_ghe_phu_thu CHECK (PhuThuGhe >= 0),
     CONSTRAINT fk_ghe_phong FOREIGN KEY (MaPhong) REFERENCES PHONG_CHIEU (MaPhong)
         ON DELETE RESTRICT ON UPDATE RESTRICT
@@ -81,13 +81,13 @@ CREATE TABLE SUAT_CHIEU (
     NgayChieu DATE NOT NULL,
     GioBatDau TIME NOT NULL,
     GioKetThuc TIME NOT NULL,
-    TrangThai VARCHAR(30) NOT NULL DEFAULT 'Sắp chiếu',
+    TrangThai VARCHAR(30) NOT NULL DEFAULT 'Sß║»p chiß║┐u',
     MaPhim VARCHAR(20) NOT NULL,
     MaPhong VARCHAR(20) NOT NULL,
     CONSTRAINT pk_suat_chieu PRIMARY KEY (MaSuatChieu),
     -- Khoa tham chieu cho DAT_VE, dam bao ghe va suat chieu cung phong.
     CONSTRAINT uq_suat_phong UNIQUE (MaSuatChieu, MaPhong),
-    CONSTRAINT ck_suat_trang_thai CHECK (TrangThai IN ('Sắp chiếu', 'Đang chiếu', 'Đã kết thúc')),
+    CONSTRAINT ck_suat_trang_thai CHECK (TrangThai IN ('Sß║»p chiß║┐u', '─Éang chiß║┐u', '─É├ú kß║┐t th├║c')),
     -- Quy uoc phan 1: suat chieu bat dau va ket thuc trong cung ngay.
     CONSTRAINT ck_suat_gio CHECK (
         GioBatDau >= '00:00:00' AND GioKetThuc < '24:00:00'
@@ -155,7 +155,7 @@ CREATE TABLE NV_BAN_HANG (
     CaLamViec VARCHAR(20) NOT NULL,
     DoanhSoThang DECIMAL(15,2) NOT NULL DEFAULT 0,
     CONSTRAINT pk_nv_ban_hang PRIMARY KEY (MaNV),
-    CONSTRAINT ck_ban_hang_ca CHECK (CaLamViec IN ('Sáng', 'Chiều', 'Tối')),
+    CONSTRAINT ck_ban_hang_ca CHECK (CaLamViec IN ('S├íng', 'Chiß╗üu', 'Tß╗æi')),
     CONSTRAINT ck_ban_hang_doanh_so CHECK (DoanhSoThang >= 0),
     CONSTRAINT fk_ban_hang_nv FOREIGN KEY (MaNV) REFERENCES NHAN_VIEN (MaNV)
         ON DELETE RESTRICT ON UPDATE RESTRICT
@@ -189,7 +189,7 @@ CREATE TABLE DAT_VE (
     MaVe VARCHAR(20) NOT NULL,
     NgayGioDat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     GiaVe DECIMAL(12,2) NOT NULL,
-    TrangThaiThanhToan VARCHAR(30) NOT NULL DEFAULT 'Chờ thanh toán',
+    TrangThaiThanhToan VARCHAR(30) NOT NULL DEFAULT 'Chß╗¥ thanh to├ín',
     MaKH VARCHAR(20) NOT NULL,
     MaSuatChieu VARCHAR(20) NOT NULL,
     MaPhong VARCHAR(20) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE DAT_VE (
     CONSTRAINT uq_dat_ve_ghe UNIQUE (MaSuatChieu, MaPhong, SoGhe),
     CONSTRAINT ck_dat_ve_gia CHECK (GiaVe >= 0),
     CONSTRAINT ck_dat_ve_thanh_toan CHECK (
-        TrangThaiThanhToan IN ('Chờ thanh toán', 'Đã thanh toán')
+        TrangThaiThanhToan IN ('Chß╗¥ thanh to├ín', '─É├ú thanh to├ín')
     ),
     CONSTRAINT fk_dat_ve_khach FOREIGN KEY (MaKH) REFERENCES KHACH_HANG (MaKH)
         ON DELETE RESTRICT ON UPDATE RESTRICT,

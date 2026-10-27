@@ -1,7 +1,7 @@
-USE QuanLyRapPhim;
+﻿USE QuanLyRapPhim;
 SET NAMES utf8mb4;
 
--- TOP 5 PHIM CÓ DOANH THU CAO NHẤT
+-- TOP 5 PHIM C├ô DOANH THU CAO NHß║ñT
 SELECT 
     p.MaPhim,
     p.TenPhim, 
@@ -10,12 +10,12 @@ SELECT
 FROM PHIM p
 JOIN SUAT_CHIEU sc ON p.MaPhim = sc.MaPhim
 JOIN DAT_VE v ON sc.MaSuatChieu = v.MaSuatChieu
-WHERE v.TrangThaiThanhToan = 'Đã thanh toán'
+WHERE v.TrangThaiThanhToan = '─É├ú thanh to├ín'
 GROUP BY p.MaPhim, p.TenPhim
 ORDER BY TongDoanhThu DESC
 LIMIT 5;
 
--- DOANH THU BÁN VÉ THEO TỪNG CỤM RẠP
+-- DOANH THU B├üN V├ë THEO Tß╗¬NG Cß╗ñM Rß║áP
 SELECT 
     cr.TenRap, 
     COUNT(v.MaVe) AS TongSoVe, 
@@ -24,11 +24,11 @@ FROM CUM_RAP cr
 JOIN PHONG_CHIEU pc ON cr.MaRap = pc.MaRap
 JOIN SUAT_CHIEU sc ON pc.MaPhong = sc.MaPhong
 JOIN DAT_VE v ON sc.MaSuatChieu = v.MaSuatChieu
-WHERE v.TrangThaiThanhToan = 'Đã thanh toán'
+WHERE v.TrangThaiThanhToan = '─É├ú thanh to├ín'
 GROUP BY cr.MaRap, cr.TenRap
 ORDER BY DoanhThuBanVe DESC;
 
--- TOP KHÁCH HÀNG CHI TIÊU MUA VÉ NHIỀU NHẤT (VIP)
+-- TOP KH├üCH H├ÇNG CHI TI├èU MUA V├ë NHIß╗ÇU NHß║ñT (VIP)
 SELECT 
     kh.MaKH, 
     kh.HoTen, 
@@ -38,27 +38,27 @@ SELECT
     SUM(v.GiaVe) AS TongTienDaChi
 FROM KHACH_HANG kh
 JOIN DAT_VE v ON kh.MaKH = v.MaKH
-WHERE v.TrangThaiThanhToan = 'Đã thanh toán'
+WHERE v.TrangThaiThanhToan = '─É├ú thanh to├ín'
 GROUP BY kh.MaKH, kh.HoTen, kh.SDT, kh.DiemTichLuy
 ORDER BY TongTienDaChi DESC
 LIMIT 10;
 
--- TẠO VIEW: BÁO CÁO DOANH THU TOÀN DIỆN (VÉ + F&B) THEO THÁNG/NĂM
+-- Tß║áO VIEW: B├üO C├üO DOANH THU TO├ÇN DIß╗åN (V├ë + F&B) THEO TH├üNG/N─éM
 CREATE OR REPLACE VIEW view_DoanhThuToanDien AS
 SELECT 
-    'Bán Vé' AS NguonDoanhThu,
+    'B├ín V├⌐' AS NguonDoanhThu,
     MONTH(v.NgayGioDat) AS Thang,
     YEAR(v.NgayGioDat) AS Nam,
     COUNT(v.MaVe) AS SoLuongGiaoDich,
     SUM(v.GiaVe) AS TongTien
 FROM DAT_VE v
-WHERE v.TrangThaiThanhToan = 'Đã thanh toán'
+WHERE v.TrangThaiThanhToan = '─É├ú thanh to├ín'
 GROUP BY MONTH(v.NgayGioDat), YEAR(v.NgayGioDat)
 
 UNION ALL
 
 SELECT 
-    'Bán F&B' AS NguonDoanhThu,
+    'B├ín F&B' AS NguonDoanhThu,
     MONTH(f.NgayMua) AS Thang,
     YEAR(f.NgayMua) AS Nam,
     COUNT(f.MaCombo) AS SoLuongGiaoDich,
@@ -66,12 +66,12 @@ SELECT
 FROM MUA_FNB f
 GROUP BY MONTH(f.NgayMua), YEAR(f.NgayMua);
 
--- Cách chạy để lấy kết quả từ View này:
+-- C├ích chß║íy ─æß╗â lß║Ñy kß║┐t quß║ú tß╗½ View n├áy:
  SELECT * FROM view_DoanhThuToanDien ORDER BY Nam DESC, Thang DESC;
 
 
 
--- ĐÁNH GIÁ HIỆU SUẤT NHÂN VIÊN BÁN HÀNG (Dùng LEFT JOIN và Subquery)
+-- ─É├üNH GI├ü HIß╗åU SUß║ñT NH├éN VI├èN B├üN H├ÇNG (D├╣ng LEFT JOIN v├á Subquery)
 SELECT 
     nv.MaNV,
     nv.HoTen,
@@ -88,6 +88,6 @@ SELECT
 FROM NHAN_VIEN nv
 JOIN NV_BAN_HANG bh ON nv.MaNV = bh.MaNV
 JOIN CUM_RAP cr ON nv.MaRap = cr.MaRap
-LEFT JOIN DAT_VE dv ON nv.MaNV = dv.MaNV AND dv.TrangThaiThanhToan = 'Đã thanh toán'
+LEFT JOIN DAT_VE dv ON nv.MaNV = dv.MaNV AND dv.TrangThaiThanhToan = '─É├ú thanh to├ín'
 GROUP BY nv.MaNV, nv.HoTen, cr.TenRap, bh.CaLamViec, bh.DoanhSoThang
 ORDER BY DoanhThuVeThucTe DESC;
