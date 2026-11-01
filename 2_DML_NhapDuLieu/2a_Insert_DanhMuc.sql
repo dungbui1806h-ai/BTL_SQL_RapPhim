@@ -1,4 +1,5 @@
 USE QuanLyRapPhim;
+SET NAMES utf8mb4;
 
 -- 1. CỤM RẠP (10 Cụm rạp)
 INSERT INTO

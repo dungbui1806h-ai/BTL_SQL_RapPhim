@@ -19,16 +19,15 @@ LIMIT 5;
 SELECT 
     cr.TenRap, 
     COUNT(v.MaVe) AS TongSoVe, 
-    SUM(v.GiaVe) AS DoanhThuBanVe
+    COALESCE(SUM(v.GiaVe), 0) AS DoanhThuBanVe
 FROM CUM_RAP cr
-JOIN PHONG_CHIEU pc ON cr.MaRap = pc.MaRap
-JOIN SUAT_CHIEU sc ON pc.MaPhong = sc.MaPhong
-JOIN DAT_VE v ON sc.MaSuatChieu = v.MaSuatChieu
-WHERE v.TrangThaiThanhToan = 'Đã thanh toán'
+LEFT JOIN PHONG_CHIEU pc ON cr.MaRap = pc.MaRap
+LEFT JOIN SUAT_CHIEU sc ON pc.MaPhong = sc.MaPhong
+LEFT JOIN DAT_VE v ON sc.MaSuatChieu = v.MaSuatChieu AND v.TrangThaiThanhToan = 'Đã thanh toán'
 GROUP BY cr.MaRap, cr.TenRap
 ORDER BY DoanhThuBanVe DESC;
 
--- TOP KHÁCH HÀNG CHI TIÊU MUA VÉ NHIỀU NHẤT (VIP)
+-- DANH SÁCH KHÁCH HÀNG VIP (TỔNG CHI TIÊU MUA VÉ CAO NHẤT)
 SELECT 
     kh.MaKH, 
     kh.HoTen, 
@@ -83,7 +82,9 @@ SELECT
     (
         SELECT COUNT(*) 
         FROM DAT_VE dv2 
-        WHERE dv2.MaNV = nv.MaNV AND dv2.GiaVe >= 120000
+        WHERE dv2.MaNV = nv.MaNV 
+          AND dv2.GiaVe >= 120000 
+          AND dv2.TrangThaiThanhToan = 'Đã thanh toán'
     ) AS SoVeGiaCao
 FROM NHAN_VIEN nv
 JOIN NV_BAN_HANG bh ON nv.MaNV = bh.MaNV

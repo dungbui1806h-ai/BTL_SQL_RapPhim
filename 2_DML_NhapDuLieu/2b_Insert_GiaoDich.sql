@@ -1,4 +1,5 @@
 USE QuanLyRapPhim;
+SET NAMES utf8mb4;
 
 -- 1. SUẤT CHIẾU (10 Suất chiếu)
 INSERT INTO
@@ -102,7 +103,7 @@ VALUES (
         'PH07'
     );
 
--- 2. ĐẶT VÉ (12 Vé giao dịch)
+-- 2. ĐẶT VÉ (12 Vé giao dịch: 5 vé mua tại quầy có MaNV, 7 vé đặt Online có MaNV = NULL)
 INSERT INTO
     DAT_VE (
         MaVe,
@@ -112,7 +113,8 @@ INSERT INTO
         MaKH,
         MaSuatChieu,
         MaPhong,
-        SoGhe
+        SoGhe,
+        MaNV
     )
 VALUES (
         'VE01',
@@ -122,7 +124,8 @@ VALUES (
         'KH01',
         'SC01',
         'PH01',
-        'A1'
+        'A1',
+        'NV04'
     ),
     (
         'VE02',
@@ -132,7 +135,8 @@ VALUES (
         'KH01',
         'SC01',
         'PH01',
-        'A2'
+        'A2',
+        'NV04'
     ),
     (
         'VE03',
@@ -142,7 +146,8 @@ VALUES (
         'KH02',
         'SC01',
         'PH01',
-        'B1'
+        'B1',
+        'NV05'
     ),
     (
         'VE04',
@@ -152,7 +157,8 @@ VALUES (
         'KH02',
         'SC01',
         'PH01',
-        'B2'
+        'B2',
+        'NV05'
     ),
     (
         'VE05',
@@ -162,7 +168,8 @@ VALUES (
         'KH03',
         'SC03',
         'PH01',
-        'S1'
+        'S1',
+        NULL
     ),
     (
         'VE06',
@@ -172,7 +179,8 @@ VALUES (
         'KH03',
         'SC03',
         'PH01',
-        'S2'
+        'S2',
+        NULL
     ),
     (
         'VE07',
@@ -182,7 +190,8 @@ VALUES (
         'KH04',
         'SC04',
         'PH02',
-        'A1'
+        'A1',
+        NULL
     ),
     (
         'VE08',
@@ -192,7 +201,8 @@ VALUES (
         'KH05',
         'SC05',
         'PH02',
-        'B1'
+        'B1',
+        NULL
     ),
     (
         'VE09',
@@ -202,7 +212,8 @@ VALUES (
         'KH07',
         'SC06',
         'PH01',
-        'B3'
+        'B3',
+        NULL
     ),
     (
         'VE10',
@@ -212,7 +223,8 @@ VALUES (
         'KH08',
         'SC08',
         'PH04',
-        'A1'
+        'A1',
+        'NV06'
     ),
     (
         'VE11',
@@ -222,7 +234,8 @@ VALUES (
         'KH09',
         'SC10',
         'PH07',
-        'A1'
+        'A1',
+        NULL
     ),
     (
         'VE12',
@@ -232,7 +245,8 @@ VALUES (
         'KH10',
         'SC10',
         'PH07',
-        'B1'
+        'B1',
+        NULL
     );
 
 -- 3. MUA F&B (10 Giao dịch dịch vụ)
